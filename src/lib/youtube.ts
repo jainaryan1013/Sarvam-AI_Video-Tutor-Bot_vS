@@ -28,11 +28,35 @@ const BROWSER_HEADERS = {
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
 };
 
+function extractJsonFromHtml(html: string, marker: string): Record<string, unknown> | null {
+  const startIdx = html.indexOf(marker);
+  if (startIdx === -1) return null;
+
+  let braceCount = 0;
+  let jsonStart = -1;
+
+  for (let i = startIdx + marker.length; i < html.length; i++) {
+    if (html[i] === "{") {
+      if (jsonStart === -1) jsonStart = i;
+      braceCount++;
+    } else if (html[i] === "}") {
+      braceCount--;
+      if (braceCount === 0 && jsonStart !== -1) {
+        try {
+          return JSON.parse(html.slice(jsonStart, i + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export async function fetchYouTubeTranscript(url: string): Promise<string> {
   const videoId = extractVideoId(url);
   if (!videoId) throw new Error("Could not extract video ID from URL");
 
-  // Fetch the YouTube page to get the caption track URLs
   const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: BROWSER_HEADERS,
   });
@@ -43,20 +67,14 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
 
   const html = await pageRes.text();
 
-  // Extract ytInitialPlayerResponse JSON blob
-  const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\})\s*(?:;|<\/script>)/s);
-  if (!playerMatch) {
-    throw new Error("Could not parse YouTube page. The video may be age-restricted or private.");
+  const playerResponse = extractJsonFromHtml(html, "ytInitialPlayerResponse =");
+  if (!playerResponse) {
+    throw new Error(
+      "Could not parse YouTube page. The video may be age-restricted or private."
+    );
   }
 
-  let playerResponse: Record<string, unknown>;
-  try {
-    playerResponse = JSON.parse(playerMatch[1]);
-  } catch {
-    throw new Error("Failed to parse YouTube player data");
-  }
-
-  type CaptionTrack = { baseUrl: string; languageCode: string; name?: { simpleText?: string } };
+  type CaptionTrack = { baseUrl: string; languageCode: string };
   const captionTracks = (
     playerResponse as {
       captions?: {
@@ -71,7 +89,6 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
     );
   }
 
-  // Prefer English, fall back to first available
   const track =
     captionTracks.find((t) => t.languageCode === "en") ||
     captionTracks.find((t) => t.languageCode.startsWith("en")) ||
@@ -96,7 +113,7 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
     .filter((e) => e.segs)
     .map((e) => e.segs!.map((s) => s.utf8).join(""))
     .join(" ")
-    .replace(/\[.*?\]/g, "") // remove [Music], [Applause] etc.
+    .replace(/\[.*?\]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
