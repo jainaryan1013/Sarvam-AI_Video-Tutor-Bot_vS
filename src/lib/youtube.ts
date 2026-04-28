@@ -64,26 +64,37 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
   fs.mkdirSync(tmpDir, { recursive: true });
   const outputTemplate = path.join(tmpDir, videoId);
 
+  // Write cookies to a temp file if provided via environment variable
+  let cookiesPath: string | null = null;
+  if (process.env.YOUTUBE_COOKIES) {
+    cookiesPath = path.join(tmpDir, "cookies.txt");
+    fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
+  }
+
+  const args = [
+    "--write-auto-sub",
+    "--write-sub",
+    "--sub-lang", "en",
+    "--sub-format", "vtt",
+    "--skip-download",
+    "--no-warnings",
+    "--quiet",
+    "-o", outputTemplate,
+  ];
+
+  if (cookiesPath) {
+    args.push("--cookies", cookiesPath);
+  }
+
+  args.push(url);
+
   try {
-    await execFileAsync(
-      "yt-dlp",
-      [
-        "--write-auto-sub",
-        "--write-sub",
-        "--sub-lang", "en",
-        "--sub-format", "vtt",
-        "--skip-download",
-        "--no-warnings",
-        "--quiet",
-        "--extractor-args", "youtube:player_client=android,web",
-        "-o", outputTemplate,
-        url,
-      ],
-      { timeout: 30000 }
-    );
+    await execFileAsync("yt-dlp", args, { timeout: 30000 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`yt-dlp failed: ${msg}`);
+  } finally {
+    if (cookiesPath && fs.existsSync(cookiesPath)) fs.unlinkSync(cookiesPath);
   }
 
   // yt-dlp names files like videoId.en.vtt or videoId.en-US.vtt
