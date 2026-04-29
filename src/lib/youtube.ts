@@ -76,8 +76,6 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
     "--sub-langs",
     "en",
     "--skip-download",
-    "--no-warnings",
-    "--quiet",
     "-o",
     outputTemplate,
   ];
@@ -86,7 +84,12 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
   args.push(url);
 
   try {
-    await execFileAsync("yt-dlp", args, { timeout: 30000 });
+    console.log("Running yt-dlp with args:", args);
+    const { stdout, stderr } = await execFileAsync("yt-dlp", args, {
+      timeout: 30000,
+    });
+    console.log("yt-dlp output:", stdout);
+    console.error("yt-dlp error output:", stderr);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`yt-dlp failed: ${msg}`);
