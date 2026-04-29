@@ -73,11 +73,13 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
 
   const args = [
     "--write-auto-sub",
-    "--all-subs",
+    "--sub-langs",
+    "en",
     "--skip-download",
     "--no-warnings",
     "--quiet",
-    "-o", outputTemplate,
+    "-o",
+    outputTemplate,
   ];
 
   if (cookiesPath) args.push("--cookies", cookiesPath);
@@ -94,12 +96,14 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
 
   // Find any subtitle file yt-dlp wrote (vtt, srt, srv3, etc.)
   const files = fs.existsSync(tmpDir)
-    ? fs.readdirSync(tmpDir).filter((f) => f.startsWith(videoId) && !f.endsWith("cookies.txt"))
+    ? fs
+        .readdirSync(tmpDir)
+        .filter((f) => f.startsWith(videoId) && !f.endsWith("cookies.txt"))
     : [];
 
   if (files.length === 0) {
     throw new Error(
-      "No subtitles found for this video. Please upload the video file directly instead."
+      "No subtitles found for this video. Please upload the video file directly instead.",
     );
   }
 

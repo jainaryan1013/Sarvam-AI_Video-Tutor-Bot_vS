@@ -42,11 +42,11 @@ export async function textToSpeech(text: string): Promise<string> {
     body: JSON.stringify({
       inputs: [truncated],
       target_language_code: "en-IN",
-      speaker: "meera",
-      model: "bulbul:v1",
-      pitch: 0,
+      speaker: "aditya",
+      model: "bulbul:v3",
+      // pitch: 0,
       pace: 1.0,
-      loudness: 1.0,
+      // loudness: 1.0,
       speech_sample_rate: 22050,
       enable_preprocessing: true,
     }),
@@ -68,7 +68,7 @@ export interface LLMMessage {
 
 export async function chatCompletion(
   messages: LLMMessage[],
-  stream: boolean = false
+  stream: boolean = false,
 ): Promise<Response> {
   const response = await fetch(`${BASE_URL}/v1/chat/completions`, {
     method: "POST",
@@ -87,6 +87,7 @@ export async function chatCompletion(
 
   if (!response.ok && !stream) {
     const error = await response.text();
+    console.log(error);
     throw new Error(`LLM failed (${response.status}): ${error}`);
   }
 
