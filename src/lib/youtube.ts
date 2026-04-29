@@ -75,6 +75,8 @@ export async function fetchYouTubeTranscript(url: string): Promise<string> {
     "--write-auto-sub",
     "--sub-langs",
     "en",
+    "--remote-components",
+    "ejs: npm",
     "--skip-download",
     "-o",
     outputTemplate,
